@@ -3,7 +3,7 @@
 import { useState } from "react";
 import LogicRuleForm, { LogicRuleFormData } from "@/components/logic-rule-form";
 
-const SUMBER_OPSI = ["TKMKB", "PPK", "PNPK"];
+const SUMBER_OPSI = ["TKMKB", "PPK", "PNPK", "BA_Kesepakatan", "Logic_BPJS"];
 
 export default function ImporNarasiPage() {
   const [sumber, setSumber] = useState(SUMBER_OPSI[0]);
