@@ -119,8 +119,12 @@ export default function LogicRuleForm({
             className="mt-1 w-full rounded border-gray-300 p-2"
             value={form.kodeDiagnosis}
             onChange={(e) => setForm({ ...form, kodeDiagnosis: e.target.value })}
-            placeholder="I21.0"
+            placeholder="I21.0, I21.1, I21.2  atau  I21  atau  I21.0-I21.4"
           />
+          <p className="mt-1 text-xs text-gray-400">
+            Bisa isi beberapa kode dipisah koma, satu prefix kategori (mis.
+            "I21" cocok ke semua turunannya), atau rentang (mis. "I21.0-I21.4").
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">
