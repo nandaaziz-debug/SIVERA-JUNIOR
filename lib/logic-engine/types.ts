@@ -3,7 +3,7 @@ export interface Temuan {
   deskripsi: string;
   referensiRuleId: string | null;
   sumber: string;
-  jalur: "terstruktur" | "narasi_fallback";
+  jalur: "terstruktur" | "narasi_fallback" | "kombinasi_kode";
 }
 
 export interface LogicRule {
