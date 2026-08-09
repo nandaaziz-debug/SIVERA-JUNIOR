@@ -20,18 +20,30 @@ ATURAN WAJIB:
 Keluarkan hasil sebagai teks naratif terstruktur, bukan JSON.`;
 
 interface ScanResumeParams {
-  imageBase64: string;
-  mediaType: "image/jpeg" | "image/png" | "image/webp";
+  fileBase64: string;
+  mediaType: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
 }
 
 export async function scanResumeMedis({
-  imageBase64,
+  fileBase64,
   mediaType,
 }: ScanResumeParams): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY belum diatur di environment variable");
   }
+
+  const isPdf = mediaType === "application/pdf";
+
+  const fileBlock = isPdf
+    ? {
+        type: "document",
+        source: { type: "base64", media_type: mediaType, data: fileBase64 },
+      }
+    : {
+        type: "image",
+        source: { type: "base64", media_type: mediaType, data: fileBase64 },
+      };
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -48,17 +60,10 @@ export async function scanResumeMedis({
         {
           role: "user",
           content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: imageBase64,
-              },
-            },
+            fileBlock,
             {
               type: "text",
-              text: "Ekstrak informasi klinis dari resume medis pada gambar ini sesuai aturan yang diberikan.",
+              text: "Ekstrak informasi klinis dari resume medis pada berkas ini sesuai aturan yang diberikan.",
             },
           ],
         },
