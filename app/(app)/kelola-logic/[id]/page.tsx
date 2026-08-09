@@ -40,6 +40,7 @@ export default function EditLogicRulePage({
 
   return (
     <main className="mx-auto max-w-2xl p-8">
+      <div className="rounded-xl bg-white p-6 text-gray-900">
       <h1 className="text-2xl font-semibold text-primary">
         Edit Aturan — {data.kodeDiagnosis}
       </h1>
@@ -49,6 +50,7 @@ export default function EditLogicRulePage({
       </p>
       <div className="mt-6">
         <LogicRuleForm initialData={data} />
+      </div>
       </div>
     </main>
   );
