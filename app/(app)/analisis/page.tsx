@@ -37,6 +37,7 @@ export default function AnalisisKasusPage() {
   const [rumahSakit, setRumahSakit] = useState(DAFTAR_RS[0]);
   const [sepNumber, setSepNumber] = useState("");
   const [kodeDiagnosis, setKodeDiagnosis] = useState("");
+  const [kodeTambahan, setKodeTambahan] = useState("");
   const [hasilScan, setHasilScan] = useState<HasilScan | null>(null);
   const [teksEditable, setTeksEditable] = useState("");
   const [sedangScan, setSedangScan] = useState(false);
@@ -103,6 +104,10 @@ export default function AnalisisKasusPage() {
           hospitalId: hospitals?.id,
           sepNumber,
           kodeDiagnosis,
+          semuaKode: [
+            kodeDiagnosis,
+            ...kodeTambahan.split("\n").map((s) => s.trim()).filter(Boolean),
+          ].filter(Boolean),
           teksEkstraksi: teksEditable,
           maskingTerdeteksi: hasilScan?.maskingTerdeteksi ?? false,
         }),
@@ -199,6 +204,23 @@ export default function AnalisisKasusPage() {
         />
         <p className="mt-1 text-xs text-gray-400">
           Dipakai untuk mencari aturan Logic JSON yang cocok secara otomatis.
+        </p>
+      </div>
+
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-gray-700">
+          Kode Tambahan (diagnosis sekunder &amp; prosedur, satu per baris)
+        </label>
+        <textarea
+          className="mt-1 w-full rounded border-gray-300 p-2 font-mono text-sm"
+          rows={3}
+          value={kodeTambahan}
+          onChange={(e) => setKodeTambahan(e.target.value)}
+          placeholder={"J18\n47.0"}
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Dipakai untuk mengecek aturan kombinasi kode (Logic SIMPATIK) yang
+          butuh beberapa kode sekaligus.
         </p>
       </div>
 
