@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 interface LogicRuleRow {
@@ -18,12 +18,16 @@ const BADGE_STATUS: Record<string, string> = {
   disetujui: "bg-green-100 text-green-800",
 };
 
+type KolomSortir = "kode_diagnosis" | "nama_diagnosis";
+
 export default function KelolaLogicPage() {
   const [data, setData] = useState<LogicRuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSumber, setFilterSumber] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [cari, setCari] = useState("");
+  const [sortKolom, setSortKolom] = useState<KolomSortir>("kode_diagnosis");
+  const [sortArah, setSortArah] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -37,6 +41,31 @@ export default function KelolaLogicPage() {
       .then((res) => setData(res.data ?? []))
       .finally(() => setLoading(false));
   }, [filterSumber, filterStatus, cari]);
+
+  function toggleSort(kolom: KolomSortir) {
+    if (sortKolom === kolom) {
+      setSortArah((a) => (a === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKolom(kolom);
+      setSortArah("asc");
+    }
+  }
+
+  const dataTerurut = useMemo(() => {
+    const disalin = [...data];
+    disalin.sort((a, b) => {
+      const nilaiA = (a[sortKolom] ?? "").toLowerCase();
+      const nilaiB = (b[sortKolom] ?? "").toLowerCase();
+      const hasil = nilaiA.localeCompare(nilaiB);
+      return sortArah === "asc" ? hasil : -hasil;
+    });
+    return disalin;
+  }, [data, sortKolom, sortArah]);
+
+  function IkonSort({ kolom }: { kolom: KolomSortir }) {
+    if (sortKolom !== kolom) return <span className="ml-1 text-gray-300">↕</span>;
+    return <span className="ml-1 text-primary">{sortArah === "asc" ? "↑" : "↓"}</span>;
+  }
 
   return (
     <main className="mx-auto max-w-4xl p-8">
@@ -94,8 +123,18 @@ export default function KelolaLogicPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
-              <th className="p-3">Kode</th>
-              <th className="p-3">Nama Diagnosis</th>
+              <th
+                className="cursor-pointer select-none p-3 hover:text-gray-800"
+                onClick={() => toggleSort("kode_diagnosis")}
+              >
+                Kode <IkonSort kolom="kode_diagnosis" />
+              </th>
+              <th
+                className="cursor-pointer select-none p-3 hover:text-gray-800"
+                onClick={() => toggleSort("nama_diagnosis")}
+              >
+                Nama Diagnosis <IkonSort kolom="nama_diagnosis" />
+              </th>
               <th className="p-3">Sumber</th>
               <th className="p-3">Jenis</th>
               <th className="p-3">Status</th>
@@ -109,14 +148,14 @@ export default function KelolaLogicPage() {
                 </td>
               </tr>
             )}
-            {!loading && data.length === 0 && (
+            {!loading && dataTerurut.length === 0 && (
               <tr>
                 <td colSpan={5} className="p-4 text-center text-gray-400">
                   Belum ada aturan.
                 </td>
               </tr>
             )}
-            {data.map((row) => (
+            {dataTerurut.map((row) => (
               <tr key={row.id} className="border-t hover:bg-gray-50">
                 <td className="p-3">
                   <Link

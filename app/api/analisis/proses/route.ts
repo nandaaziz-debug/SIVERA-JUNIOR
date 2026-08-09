@@ -8,6 +8,7 @@ import { hitungSkorAkurasi } from "@/lib/logic-engine/accuracy-score";
 import { Temuan, LogicRule } from "@/lib/logic-engine/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();

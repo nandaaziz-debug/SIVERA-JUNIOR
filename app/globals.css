@@ -2,7 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   FONT CUSTOM
+   Taruh file font Anda di public/fonts/ dengan nama persis di bawah ini,
+   font akan otomatis aktif menggantikan fallback-nya.
+   ============================================ */
+@font-face {
+  font-family: "Venite Adoremus";
+  src: url("/fonts/Venite_Adoremus.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Venite Adoremus Straight";
+  src: url("/fonts/Venite_Adoremus_Straight.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Abadi";
+  src: url("/fonts/AbadiMT.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Abadi";
+  src: url("/fonts/AbadiMT-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
 body {
   color: #1a1a1a;
   background: #f7f8fa;
+  font-family: "Abadi", "Work Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Venite Adoremus", "Abadi", "Work Sans", ui-sans-serif, sans-serif;
+}
+
+/* ============================================
+   GLASSMORPHISM / 3D — kartu & input transparan berlapis
+   ============================================ */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 8px 24px rgba(12, 68, 124, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.glass-input {
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.btn-3d {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.btn-3d:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.15) inset,
+    0 2px 4px rgba(0, 0, 0, 0.35);
 }

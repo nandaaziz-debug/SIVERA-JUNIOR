@@ -4,6 +4,7 @@ import { maskSensitiveData } from "@/lib/security/masking";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // AI baca PDF/gambar bisa lebih dari 10 detik default
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -51,8 +52,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const teksAsli = await scanResumeMedis({ fileBase64, mediaType });
-    const hasilMasking = maskSensitiveData(teksAsli);
+    const hasil = await scanResumeMedis({ fileBase64, mediaType });
+    const hasilMasking = maskSensitiveData(hasil.ringkasanKlinis);
 
     await supabase.from("audit_log").insert({
       user_id: user.id,
@@ -61,14 +62,18 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
+      sepNumber: hasil.sepNumber,
+      kodeDiagnosisUtama: hasil.kodeDiagnosisUtama,
+      kodeDiagnosisSekunder: hasil.kodeDiagnosisSekunder,
+      kodeProsedur: hasil.kodeProsedur,
       teksEkstraksi: hasilMasking.maskedText,
       maskingTerdeteksi: hasilMasking.maskingTerdeteksi,
       jumlahDitemukan: hasilMasking.jumlahDitemukan,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gagal scan berkas:", error);
     return NextResponse.json(
-      { error: "Gagal memproses berkas. Coba lagi." },
+      { error: `Gagal memproses berkas: ${error?.message ?? "coba lagi"}` },
       { status: 500 }
     );
   }

@@ -49,8 +49,8 @@ export default function ImporNarasiPage() {
           `Catatan AI: narasi ini dinilai sulit disederhanakan jadi kriteria tetap — ${d.alasan_jika_tidak_bisa}. Draft disiapkan sebagai "Narasi Fallback".`
         );
       }
-    } catch {
-      setError("Terjadi kesalahan jaringan.");
+    } catch (err: any) {
+      setError(err?.message ?? "Terjadi kesalahan jaringan.");
     } finally {
       setMemproses(false);
     }

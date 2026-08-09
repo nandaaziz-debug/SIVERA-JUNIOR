@@ -110,9 +110,9 @@ export default function AnalisisItemCard({
   const status = LABEL_STATUS[item.status];
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+    <div className="rounded-lg glass-panel p-4">
       <div className="flex gap-4">
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded border border-white/10 bg-black/30">
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded glass-input">
           {item.previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
@@ -133,7 +133,7 @@ export default function AnalisisItemCard({
 
           <div className="mt-2 grid grid-cols-4 gap-2">
             <select
-              className="rounded border border-white/10 bg-black/30 p-1.5 text-xs text-white"
+              className="rounded glass-input p-1.5 text-xs text-white"
               value={item.rumahSakit}
               onChange={(e) => onUpdate({ rumahSakit: e.target.value })}
               disabled={item.status === "tersimpan"}
@@ -145,21 +145,21 @@ export default function AnalisisItemCard({
               ))}
             </select>
             <input
-              className="rounded border border-white/10 bg-black/30 p-1.5 text-xs text-white placeholder:text-gray-600"
+              className="rounded glass-input p-1.5 text-xs text-white placeholder:text-gray-600"
               placeholder="No. SEP"
               value={item.sepNumber}
               onChange={(e) => onUpdate({ sepNumber: e.target.value })}
               disabled={item.status === "tersimpan"}
             />
             <input
-              className="rounded border border-white/10 bg-black/30 p-1.5 text-xs text-white placeholder:text-gray-600"
+              className="rounded glass-input p-1.5 text-xs text-white placeholder:text-gray-600"
               placeholder="Kode diagnosis"
               value={item.kodeDiagnosis}
               onChange={(e) => onUpdate({ kodeDiagnosis: e.target.value })}
               disabled={item.status === "tersimpan"}
             />
             <input
-              className="rounded border border-white/10 bg-black/30 p-1.5 text-xs text-white placeholder:text-gray-600"
+              className="rounded glass-input p-1.5 text-xs text-white placeholder:text-gray-600"
               placeholder="Kode tambahan (koma)"
               value={item.kodeTambahan.replace(/\n/g, ", ")}
               onChange={(e) =>
@@ -168,6 +168,12 @@ export default function AnalisisItemCard({
               disabled={item.status === "tersimpan"}
             />
           </div>
+
+          {(item.status === "siap_review") && (item.sepNumber || item.kodeDiagnosis) && (
+            <p className="mt-1 text-[10px] text-primary-light">
+              Kode di atas diisi otomatis dari hasil scan — periksa kembali sebelum disimpan.
+            </p>
+          )}
 
           {item.status === "error" && (
             <p className="mt-2 text-xs text-red-400">{item.errorMsg}</p>
@@ -184,7 +190,7 @@ export default function AnalisisItemCard({
                 )}
               </div>
               <textarea
-                className="mt-1 w-full rounded border border-white/10 bg-black/30 p-2 font-mono text-xs text-gray-200"
+                className="mt-1 w-full rounded glass-input p-2 font-mono text-xs text-gray-200"
                 rows={5}
                 value={item.teksEditable}
                 onChange={(e) => onUpdate({ teksEditable: e.target.value })}

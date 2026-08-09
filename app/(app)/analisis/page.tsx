@@ -95,14 +95,28 @@ export default function AnalisisKasusPage() {
           continue;
         }
 
+        const kodeSekunderDanProsedur = [
+          ...(data.kodeDiagnosisSekunder ?? []),
+          ...(data.kodeProsedur ?? []),
+        ].join("\n");
+
         updateItem(item.localId, {
           status: "siap_review",
           teksEditable: data.teksEkstraksi,
           maskingTerdeteksi: data.maskingTerdeteksi,
           jumlahDitemukan: data.jumlahDitemukan,
+          // Auto-isi dari hasil scan AI — tetap bisa dikoreksi manual sebelum
+          // disimpan (human checkpoint), karena akurasi baca kode tetap
+          // wajib ditinjau verifikator.
+          sepNumber: data.sepNumber ?? "",
+          kodeDiagnosis: data.kodeDiagnosisUtama ?? "",
+          kodeTambahan: kodeSekunderDanProsedur,
         });
-      } catch {
-        updateItem(item.localId, { status: "error", errorMsg: "Kesalahan jaringan saat memindai" });
+      } catch (err: any) {
+        updateItem(item.localId, {
+          status: "error",
+          errorMsg: err?.message ?? "Kesalahan jaringan saat memindai",
+        });
       }
     }
 
@@ -117,7 +131,7 @@ export default function AnalisisKasusPage() {
         <p className="text-xs font-semibold uppercase tracking-widest text-primary-light">
           Verifikasi
         </p>
-        <h1 className="mt-1 text-2xl font-extrabold uppercase tracking-tight text-white">
+        <h1 className="mt-1 font-display text-2xl font-extrabold uppercase tracking-tight text-white">
           Analisis Kasus
         </h1>
         <p className="mt-1 text-sm text-gray-300">
@@ -167,7 +181,7 @@ export default function AnalisisKasusPage() {
             <button
               onClick={prosesSemua}
               disabled={sedangMemproses}
-              className="rounded bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="rounded bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 btn-3d"
             >
               {sedangMemproses ? "Memindai..." : `Proses ${jumlahMenunggu} Kasus`}
             </button>

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { callClaudeJSON } from "@/lib/ai/call-claude-json";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /**
  * Endpoint ini HANYA membuat draft — tidak pernah menyimpan langsung ke

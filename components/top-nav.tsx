@@ -32,10 +32,10 @@ export default function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A1420]">
+    <header className="sticky top-0 z-30 glass-panel">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
         <div className="flex items-center gap-8">
-          <span className="text-sm font-extrabold uppercase tracking-widest text-white">
+          <span className="font-display text-sm font-extrabold uppercase tracking-widest text-white">
             SIVERA <span className="text-primary-light">Junior</span>
           </span>
           <nav className="flex gap-1">

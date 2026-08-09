@@ -19,7 +19,7 @@ export default function DashboardPage() {
         <p className="text-xs font-semibold uppercase tracking-widest text-primary-light">
           Status Report
         </p>
-        <h1 className="mt-2 text-3xl font-extrabold uppercase tracking-tight text-white">
+        <h1 className="mt-2 font-display text-3xl font-extrabold uppercase tracking-tight text-white">
           SIVERA Junior
         </h1>
         <p className="mt-2 max-w-xl text-sm text-gray-300">
@@ -28,13 +28,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+        <div className="rounded-lg glass-panel p-5">
           <p className="text-xs uppercase tracking-wide text-gray-400">Total Kasus</p>
           <p className="mt-1 text-3xl font-bold text-white">
             {ringkasan?.totalKasus ?? "—"}
           </p>
         </div>
-        <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+        <div className="rounded-lg glass-panel p-5">
           <p className="text-xs uppercase tracking-wide text-gray-400">Menunggu Review</p>
           <p className="mt-1 text-3xl font-bold text-amber-400">
             {ringkasan?.menunggu ?? "—"}
@@ -45,7 +45,7 @@ export default function DashboardPage() {
       <div className="mt-6 flex gap-3">
         <a
           href="/analisis"
-          className="rounded bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-light"
+          className="rounded bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-light btn-3d"
         >
           + Analisis Kasus Baru
         </a>

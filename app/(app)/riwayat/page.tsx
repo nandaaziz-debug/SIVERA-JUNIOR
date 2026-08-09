@@ -43,20 +43,20 @@ export default function RiwayatPage() {
         <p className="text-xs font-semibold uppercase tracking-widest text-primary-light">
           Rekap
         </p>
-        <h1 className="mt-1 text-2xl font-extrabold uppercase tracking-tight text-white">
+        <h1 className="mt-1 font-display text-2xl font-extrabold uppercase tracking-tight text-white">
           Riwayat Analisa
         </h1>
       </div>
 
       <div className="mt-5 flex gap-3">
         <input
-          className="flex-1 rounded border border-white/10 bg-white/5 p-2.5 text-sm text-white placeholder:text-gray-500"
+          className="flex-1 rounded glass-input p-2.5 text-sm text-white placeholder:text-gray-500"
           placeholder="Cari nomor SEP atau kode diagnosis..."
           value={cari}
           onChange={(e) => setCari(e.target.value)}
         />
         <select
-          className="rounded border border-white/10 bg-white/5 p-2.5 text-sm text-white"
+          className="rounded glass-input p-2.5 text-sm text-white"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
@@ -75,7 +75,7 @@ export default function RiwayatPage() {
         {data.map((row) => (
           <div
             key={row.id}
-            className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4"
+            className="flex items-center justify-between rounded-lg glass-panel p-4"
           >
             <div>
               <p className="font-semibold text-white">
