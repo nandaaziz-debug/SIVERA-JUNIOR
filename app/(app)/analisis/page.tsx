@@ -1,338 +1,190 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useCallback, useRef, useState } from "react";
+import AnalisisItemCard, { QueueItem } from "@/components/analisis-item-card";
 
-interface HasilScan {
-  teksEkstraksi: string;
-  maskingTerdeteksi: boolean;
-  jumlahDitemukan: { nik: number; noBpjs: number };
+const FORMAT_DIDUKUNG = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const MAKS_UKURAN = 15 * 1024 * 1024;
+
+function buatId() {
+  return Math.random().toString(36).slice(2);
 }
-
-interface Temuan {
-  kategori: "kritis" | "sedang" | "ringan" | "informasi";
-  deskripsi: string;
-  sumber: string;
-  jalur: string;
-}
-
-interface HasilProses {
-  temuan: Temuan[];
-  accuracyScore: number;
-  jalurAnalisis: string;
-}
-
-const DAFTAR_RS = ["RS ASM", "RS Haryanda"];
-
-const WARNA_KATEGORI: Record<string, string> = {
-  kritis: "bg-red-100 text-red-800",
-  sedang: "bg-amber-100 text-amber-800",
-  ringan: "bg-yellow-50 text-yellow-800",
-  informasi: "bg-gray-100 text-gray-600",
-};
 
 export default function AnalisisKasusPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [rumahSakit, setRumahSakit] = useState(DAFTAR_RS[0]);
-  const [sepNumber, setSepNumber] = useState("");
-  const [kodeDiagnosis, setKodeDiagnosis] = useState("");
-  const [kodeTambahan, setKodeTambahan] = useState("");
-  const [hasilScan, setHasilScan] = useState<HasilScan | null>(null);
-  const [teksEditable, setTeksEditable] = useState("");
-  const [sedangScan, setSedangScan] = useState(false);
-  const [sedangSimpan, setSedangSimpan] = useState(false);
-  const [pesan, setPesan] = useState<string | null>(null);
-  const [caseIdTersimpan, setCaseIdTersimpan] = useState<string | null>(null);
-  const [hasilProses, setHasilProses] = useState<HasilProses | null>(null);
-  const [sedangProses, setSedangProses] = useState(false);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [sedangMemproses, setSedangMemproses] = useState(false);
+  const [dragAktif, setDragAktif] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  function handlePilihFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setHasilScan(null);
-    setPesan(null);
+  function updateItem(localId: string, patch: Partial<QueueItem>) {
+    setQueue((q) => q.map((it) => (it.localId === localId ? { ...it, ...patch } : it)));
   }
 
-  async function handleScan() {
-    if (!file) return;
-    setSedangScan(true);
-    setPesan(null);
+  function removeItem(localId: string) {
+    setQueue((q) => q.filter((it) => it.localId !== localId));
+  }
 
-    const formData = new FormData();
-    formData.append("gambar", file);
+  const tambahBerkas = useCallback((files: FileList | File[]) => {
+    const daftar = Array.from(files);
+    const itemBaru: QueueItem[] = [];
 
-    try {
-      const res = await fetch("/api/analisis/scan", {
-        method: "POST",
-        body: formData,
+    for (const file of daftar) {
+      if (!FORMAT_DIDUKUNG.includes(file.type)) continue;
+      if (file.size > MAKS_UKURAN) continue;
+
+      itemBaru.push({
+        localId: buatId(),
+        file,
+        previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
+        status: "menunggu",
+        teksEditable: "",
+        rumahSakit: "RS ASM",
+        sepNumber: "",
+        kodeDiagnosis: "",
+        kodeTambahan: "",
       });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setPesan(data.error ?? "Gagal memproses gambar");
-        return;
-      }
-
-      setHasilScan(data);
-      setTeksEditable(data.teksEkstraksi);
-    } catch {
-      setPesan("Terjadi kesalahan jaringan saat scan.");
-    } finally {
-      setSedangScan(false);
     }
+
+    if (itemBaru.length > 0) {
+      setQueue((q) => [...q, ...itemBaru]);
+    }
+  }, []);
+
+  // Dukungan paste (Ctrl+V) — screenshot langsung dari clipboard
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.kind === "file") {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) tambahBerkas(files);
+    },
+    [tambahBerkas]
+  );
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragAktif(false);
+    if (e.dataTransfer.files?.length) tambahBerkas(e.dataTransfer.files);
   }
 
-  async function handleSimpan() {
-    setSedangSimpan(true);
-    setPesan(null);
+  // Antrian diproses SATU PER SATU (bukan Promise.all) — ini yang menjaga
+  // beban API AI tetap terkendali meski banyak kasus diunggah sekaligus.
+  async function prosesSemua() {
+    setSedangMemproses(true);
 
-    try {
-      const supabase = createClient();
-      const { data: hospitals } = await supabase
-        .from("hospitals")
-        .select("id, nama")
-        .eq("nama", rumahSakit)
-        .single();
+    const menunggu = queue.filter((it) => it.status === "menunggu");
 
-      const res = await fetch("/api/analisis/simpan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hospitalId: hospitals?.id,
-          sepNumber,
-          kodeDiagnosis,
-          semuaKode: [
-            kodeDiagnosis,
-            ...kodeTambahan.split("\n").map((s) => s.trim()).filter(Boolean),
-          ].filter(Boolean),
-          teksEkstraksi: teksEditable,
-          maskingTerdeteksi: hasilScan?.maskingTerdeteksi ?? false,
-        }),
-      });
-      const data = await res.json();
+    for (const item of menunggu) {
+      updateItem(item.localId, { status: "memindai" });
 
-      if (!res.ok) {
-        setPesan(data.error ?? "Gagal menyimpan kasus");
-        return;
+      try {
+        const formData = new FormData();
+        formData.append("berkas", item.file);
+
+        const res = await fetch("/api/analisis/scan", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (!res.ok) {
+          updateItem(item.localId, { status: "error", errorMsg: data.error ?? "Gagal memindai" });
+          continue;
+        }
+
+        updateItem(item.localId, {
+          status: "siap_review",
+          teksEditable: data.teksEkstraksi,
+          maskingTerdeteksi: data.maskingTerdeteksi,
+          jumlahDitemukan: data.jumlahDitemukan,
+        });
+      } catch {
+        updateItem(item.localId, { status: "error", errorMsg: "Kesalahan jaringan saat memindai" });
       }
-
-      setPesan("Kasus berhasil disimpan. Lanjutkan proses Logic Engine di bawah.");
-      setCaseIdTersimpan(data.caseId);
-    } catch {
-      setPesan("Terjadi kesalahan jaringan saat menyimpan.");
-    } finally {
-      setSedangSimpan(false);
     }
+
+    setSedangMemproses(false);
   }
 
-  async function handleProses() {
-    if (!caseIdTersimpan) return;
-    setSedangProses(true);
-    setPesan(null);
-
-    try {
-      const res = await fetch("/api/analisis/proses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId: caseIdTersimpan }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setPesan(data.error ?? "Gagal memproses kasus");
-        return;
-      }
-
-      setHasilProses(data);
-    } catch {
-      setPesan("Terjadi kesalahan jaringan saat memproses.");
-    } finally {
-      setSedangProses(false);
-    }
-  }
+  const jumlahMenunggu = queue.filter((it) => it.status === "menunggu").length;
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold text-primary">Analisis Kasus</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Upload resume medis, sistem akan membaca isinya dan menyamarkan
-        otomatis NIK/nomor BPJS sebelum data disimpan.
-      </p>
-
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Rumah Sakit
-          </label>
-          <select
-            className="mt-1 w-full rounded border-gray-300 p-2"
-            value={rumahSakit}
-            onChange={(e) => setRumahSakit(e.target.value)}
-          >
-            {DAFTAR_RS.map((rs) => (
-              <option key={rs} value={rs}>
-                {rs}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Nomor SEP (opsional)
-          </label>
-          <input
-            className="mt-1 w-full rounded border-gray-300 p-2"
-            value={sepNumber}
-            onChange={(e) => setSepNumber(e.target.value)}
-            placeholder="0001R0010125V000001"
-          />
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700">
-          Kode Diagnosis (ICD-10)
-        </label>
-        <input
-          className="mt-1 w-full rounded border-gray-300 p-2"
-          value={kodeDiagnosis}
-          onChange={(e) => setKodeDiagnosis(e.target.value)}
-          placeholder="I21.0"
-        />
-        <p className="mt-1 text-xs text-gray-400">
-          Dipakai untuk mencari aturan Logic JSON yang cocok secara otomatis.
+    <main className="mx-auto max-w-4xl p-8">
+      <div className="rounded-xl border border-white/10 bg-gradient-to-r from-[#0C447C] to-[#042C53] p-6">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary-light">
+          Verifikasi
+        </p>
+        <h1 className="mt-1 text-2xl font-extrabold uppercase tracking-tight text-white">
+          Analisis Kasus
+        </h1>
+        <p className="mt-1 text-sm text-gray-300">
+          Unggah beberapa kasus sekaligus — diproses satu per satu secara
+          otomatis agar tidak membebani API AI.
         </p>
       </div>
 
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700">
-          Kode Tambahan (diagnosis sekunder &amp; prosedur, satu per baris)
-        </label>
-        <textarea
-          className="mt-1 w-full rounded border-gray-300 p-2 font-mono text-sm"
-          rows={3}
-          value={kodeTambahan}
-          onChange={(e) => setKodeTambahan(e.target.value)}
-          placeholder={"J18\n47.0"}
-        />
-        <p className="mt-1 text-xs text-gray-400">
-          Dipakai untuk mengecek aturan kombinasi kode (Logic SIMPATIK) yang
-          butuh beberapa kode sekaligus.
-        </p>
-      </div>
-
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-gray-700">
-          Gambar Resume Medis
-        </label>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handlePilihFile}
-          className="mt-1 block w-full text-sm"
-        />
-        {preview && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={preview}
-            alt="Pratinjau resume medis"
-            className="mt-3 max-h-64 rounded border"
-          />
-        )}
-      </div>
-
-      <button
-        onClick={handleScan}
-        disabled={!file || sedangScan}
-        className="mt-4 rounded bg-primary px-4 py-2 text-white disabled:opacity-40"
+      {/* Dropzone: paste, drag & drop, atau klik */}
+      <div
+        tabIndex={0}
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragAktif(true);
+        }}
+        onDragLeave={() => setDragAktif(false)}
+        onClick={() => inputRef.current?.click()}
+        className={`mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition ${
+          dragAktif ? "border-primary-light bg-primary/10" : "border-white/15 hover:border-white/30"
+        }`}
       >
-        {sedangScan ? "Memindai..." : "Scan Gambar"}
-      </button>
+        <p className="text-sm font-medium text-white">
+          Klik untuk lampirkan, seret berkas ke sini, atau paste (Ctrl+V) screenshot
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          Format: JPG, PNG, WEBP, atau PDF — maksimal 15MB per berkas, bisa banyak sekaligus
+        </p>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept={FORMAT_DIDUKUNG.join(",")}
+          className="hidden"
+          onChange={(e) => e.target.files && tambahBerkas(e.target.files)}
+        />
+      </div>
 
-      {hasilScan && (
-        <div className="mt-6 rounded border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-medium">Hasil Ekstraksi — Wajib Ditinjau</h2>
-            {hasilScan.maskingTerdeteksi && (
-              <span className="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                {hasilScan.jumlahDitemukan.nik} NIK &amp;{" "}
-                {hasilScan.jumlahDitemukan.noBpjs} no. BPJS disamarkan
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Periksa hasil di bawah. Jika ada identitas yang lolos atau data
-            klinis penting yang salah tersamarkan, koreksi manual sebelum
-            disimpan.
+      {queue.length > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-gray-400">
+            {queue.length} berkas dalam antrian
+            {jumlahMenunggu > 0 && ` · ${jumlahMenunggu} menunggu diproses`}
           </p>
-          <textarea
-            className="mt-3 w-full rounded border-gray-300 p-3 font-mono text-sm"
-            rows={10}
-            value={teksEditable}
-            onChange={(e) => setTeksEditable(e.target.value)}
+          {jumlahMenunggu > 0 && (
+            <button
+              onClick={prosesSemua}
+              disabled={sedangMemproses}
+              className="rounded bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {sedangMemproses ? "Memindai..." : `Proses ${jumlahMenunggu} Kasus`}
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 space-y-3">
+        {queue.map((item) => (
+          <AnalisisItemCard
+            key={item.localId}
+            item={item}
+            onUpdate={(patch) => updateItem(item.localId, patch)}
+            onRemove={() => removeItem(item.localId)}
           />
-          <button
-            onClick={handleSimpan}
-            disabled={sedangSimpan}
-            className="mt-3 rounded bg-green-700 px-4 py-2 text-white disabled:opacity-40"
-          >
-            {sedangSimpan ? "Menyimpan..." : "Konfirmasi & Simpan Kasus"}
-          </button>
-        </div>
-      )}
-
-      {caseIdTersimpan && !hasilProses && (
-        <div className="mt-6 rounded border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">
-            Kasus tersimpan. Jalankan pencocokan aturan Logic JSON untuk
-            mendapatkan temuan dan skor akurasi.
-          </p>
-          <button
-            onClick={handleProses}
-            disabled={sedangProses}
-            className="mt-3 rounded bg-primary px-4 py-2 text-white disabled:opacity-40"
-          >
-            {sedangProses ? "Memproses..." : "Proses dengan Logic Engine"}
-          </button>
-        </div>
-      )}
-
-      {hasilProses && (
-        <div className="mt-6 rounded border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-medium">Hasil Analisis</h2>
-            <span className="text-2xl font-semibold text-primary">
-              {hasilProses.accuracyScore}
-              <span className="text-sm text-gray-400">/100</span>
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Jalur analisis: <span className="font-medium">{hasilProses.jalurAnalisis}</span>
-          </p>
-
-          <div className="mt-4 space-y-2">
-            {hasilProses.temuan.length === 0 && (
-              <p className="text-sm text-green-700">Tidak ada temuan.</p>
-            )}
-            {hasilProses.temuan.map((t, i) => (
-              <div key={i} className="rounded border border-gray-100 p-3 text-sm">
-                <span
-                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${WARNA_KATEGORI[t.kategori]}`}
-                >
-                  {t.kategori}
-                </span>
-                <p className="mt-1 text-gray-700">{t.deskripsi}</p>
-                <p className="mt-1 text-xs text-gray-400">Sumber: {t.sumber}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {pesan && <p className="mt-4 text-sm text-gray-700">{pesan}</p>}
+        ))}
+      </div>
     </main>
   );
 }
