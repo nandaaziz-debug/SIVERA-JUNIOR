@@ -25,10 +25,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Catatan penting: berkas HANYA diproses di memori (request ini), TIDAK
-  // pernah ditulis ke Supabase Storage atau disk. Setelah response
-  // dikembalikan, buffer dibuang oleh runtime — mengurangi risiko kebocoran
-  // dibanding menyimpan berkas mentah secara permanen.
   const arrayBuffer = await file.arrayBuffer();
   const fileBase64 = Buffer.from(arrayBuffer).toString("base64");
 
@@ -46,7 +42,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const MAKS_UKURAN = 15 * 1024 * 1024; // 15MB
+  const MAKS_UKURAN = 15 * 1024 * 1024;
   if (file.size > MAKS_UKURAN) {
     return NextResponse.json(
       { error: "Ukuran berkas maksimal 15MB." },
