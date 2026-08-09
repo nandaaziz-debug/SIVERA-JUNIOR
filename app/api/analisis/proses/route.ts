@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkTerstruktur } from "@/lib/logic-engine/check-terstruktur";
 import { checkNarasiFallback } from "@/lib/logic-engine/check-narasi-fallback";
+import { cekKombinasi, KombinasiRule } from "@/lib/logic-engine/check-kombinasi";
 import { hitungSkorAkurasi } from "@/lib/logic-engine/accuracy-score";
 import { Temuan, LogicRule } from "@/lib/logic-engine/types";
 
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const { data: kasus, error: errKasus } = await supabase
     .from("case_analyses")
-    .select("id, kode_diagnosis, teks_ekstraksi")
+    .select("id, kode_diagnosis, teks_ekstraksi, semua_kode")
     .eq("id", caseId)
     .single();
 
@@ -73,11 +74,34 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Pengecekan kombinasi kode — TANPA AI, murni logika, jalan terlepas dari
+  // apakah aturan per-diagnosis di atas ditemukan atau tidak.
+  const kodeKasus = kasus.semua_kode ?? (kasus.kode_diagnosis ? [kasus.kode_diagnosis] : []);
+  if (kodeKasus.length > 0) {
+    const { data: kombinasiRules } = await supabase
+      .from("kombinasi_rules")
+      .select("*")
+      .eq("status", "disetujui");
+
+    for (const rule of (kombinasiRules ?? []) as KombinasiRule[]) {
+      if (cekKombinasi(kodeKasus, rule)) {
+        semuaTemuan.push({
+          kategori: rule.kategori_temuan,
+          deskripsi: `[${rule.flag}] ${rule.aturan}`,
+          referensiRuleId: rule.id,
+          sumber: rule.referensi_sumber ?? "Logic SIMPATIK",
+          jalur: "kombinasi_kode",
+        });
+        jalurTerpakai.add("kombinasi_kode");
+      }
+    }
+  }
+
   const jalurAnalisis =
-    jalurTerpakai.size === 2
+    jalurTerpakai.size > 1
       ? "campuran"
-      : jalurTerpakai.has("narasi_fallback")
-        ? "narasi_fallback"
+      : jalurTerpakai.size === 1
+        ? Array.from(jalurTerpakai)[0]
         : "terstruktur";
 
   const skor = hitungSkorAkurasi(semuaTemuan);
