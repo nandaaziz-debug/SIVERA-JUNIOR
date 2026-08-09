@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { hospitalId, sepNumber, kodeDiagnosis, teksEkstraksi, maskingTerdeteksi } = body;
+  const { hospitalId, sepNumber, kodeDiagnosis, semuaKode, teksEkstraksi, maskingTerdeteksi } = body;
 
   if (!hospitalId || !teksEkstraksi) {
     return NextResponse.json(
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       hospital_id: hospitalId,
       sep_number: sepNumber ?? null,
       kode_diagnosis: kodeDiagnosis ?? null,
+      semua_kode: semuaKode ?? null,
       teks_ekstraksi: teksEkstraksi,
       masking_terdeteksi: maskingTerdeteksi ?? false,
       status_review: "menunggu",
