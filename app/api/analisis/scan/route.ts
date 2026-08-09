@@ -16,32 +16,46 @@ export async function POST(request: NextRequest) {
   }
 
   const formData = await request.formData();
-  const file = formData.get("gambar") as File | null;
+  const file = formData.get("berkas") as File | null;
 
   if (!file) {
     return NextResponse.json(
-      { error: "Gambar resume medis wajib diunggah" },
+      { error: "Berkas resume medis wajib diunggah" },
       { status: 400 }
     );
   }
 
-  // Catatan penting: gambar HANYA diproses di memori (request ini), TIDAK
+  // Catatan penting: berkas HANYA diproses di memori (request ini), TIDAK
   // pernah ditulis ke Supabase Storage atau disk. Setelah response
-  // dikembalikan, buffer gambar dibuang oleh runtime — mengurangi risiko
-  // kebocoran dibanding menyimpan gambar mentah secara permanen.
+  // dikembalikan, buffer dibuang oleh runtime — mengurangi risiko kebocoran
+  // dibanding menyimpan berkas mentah secara permanen.
   const arrayBuffer = await file.arrayBuffer();
-  const imageBase64 = Buffer.from(arrayBuffer).toString("base64");
+  const fileBase64 = Buffer.from(arrayBuffer).toString("base64");
 
-  const mediaType = file.type as "image/jpeg" | "image/png" | "image/webp";
-  if (!["image/jpeg", "image/png", "image/webp"].includes(mediaType)) {
+  const mediaType = file.type as
+    | "image/jpeg"
+    | "image/png"
+    | "image/webp"
+    | "application/pdf";
+
+  const FORMAT_DIDUKUNG = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+  if (!FORMAT_DIDUKUNG.includes(mediaType)) {
     return NextResponse.json(
-      { error: "Format gambar tidak didukung. Gunakan JPEG, PNG, atau WebP." },
+      { error: "Format tidak didukung. Gunakan JPEG, PNG, WebP, atau PDF." },
+      { status: 400 }
+    );
+  }
+
+  const MAKS_UKURAN = 15 * 1024 * 1024; // 15MB
+  if (file.size > MAKS_UKURAN) {
+    return NextResponse.json(
+      { error: "Ukuran berkas maksimal 15MB." },
       { status: 400 }
     );
   }
 
   try {
-    const teksAsli = await scanResumeMedis({ imageBase64, mediaType });
+    const teksAsli = await scanResumeMedis({ fileBase64, mediaType });
     const hasilMasking = maskSensitiveData(teksAsli);
 
     await supabase.from("audit_log").insert({
@@ -56,9 +70,9 @@ export async function POST(request: NextRequest) {
       jumlahDitemukan: hasilMasking.jumlahDitemukan,
     });
   } catch (error) {
-    console.error("Gagal scan resume:", error);
+    console.error("Gagal scan berkas:", error);
     return NextResponse.json(
-      { error: "Gagal memproses gambar. Coba lagi." },
+      { error: "Gagal memproses berkas. Coba lagi." },
       { status: 500 }
     );
   }
