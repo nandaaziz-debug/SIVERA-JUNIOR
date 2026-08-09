@@ -40,6 +40,7 @@ export default function KelolaLogicPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-8">
+      <div className="rounded-xl bg-white p-6 text-gray-900">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-primary">Kelola Logic JSON</h1>
         <div className="flex gap-2">
@@ -139,6 +140,7 @@ export default function KelolaLogicPage() {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </main>
   );
