@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkTerstruktur } from "@/lib/logic-engine/check-terstruktur";
 import { checkNarasiFallback } from "@/lib/logic-engine/check-narasi-fallback";
 import { cekKombinasi, KombinasiRule } from "@/lib/logic-engine/check-kombinasi";
+import { kodeTermasukAturan } from "@/lib/logic-engine/kode-utils";
 import { hitungSkorAkurasi } from "@/lib/logic-engine/accuracy-score";
 import { Temuan, LogicRule } from "@/lib/logic-engine/types";
 
@@ -40,13 +41,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Lookup LANGSUNG by kode diagnosis — bukan pencarian similarity/RAG,
-  // sehingga aturan yang dipakai selalu pasti dan sama untuk kode yang sama.
-  const { data: rules, error: errRules } = await supabase
+  // Lookup TIDAK LAGI exact match saja — field kode_diagnosis di logic_rules
+  // sekarang bisa berisi beberapa kode/prefix/rentang sekaligus (dipisah
+  // koma atau baris baru), untuk menampung diagnosis dengan banyak varian
+  // kode ICD (mis. STEMI: I21.0, I21.1, I21.2, I21.3, I21.4).
+  const { data: semuaRuleDisetujui, error: errRules } = await supabase
     .from("logic_rules")
     .select("*")
-    .eq("kode_diagnosis", kasus.kode_diagnosis)
     .eq("status", "disetujui");
+
+  const rules = (semuaRuleDisetujui ?? []).filter((r) =>
+    kodeTermasukAturan(kasus.kode_diagnosis, r.kode_diagnosis)
+  );
 
   const semuaTemuan: Temuan[] = [];
   const jalurTerpakai = new Set<string>();
