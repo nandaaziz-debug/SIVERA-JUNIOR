@@ -43,8 +43,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const hasil = await callClaudeJSON({
-    system: `Anda membantu merekap narasi regulasi medis (TKMKB/PPK/PNPK) menjadi
+  try {
+    const hasil = await callClaudeJSON({
+      system: `Anda membantu merekap narasi regulasi medis (TKMKB/PPK/PNPK) menjadi
 draft data terstruktur untuk sistem verifikasi klaim BPJS.
 
 Baca narasi yang diberikan, lalu identifikasi SATU diagnosis utama yang
@@ -72,19 +73,26 @@ Format output JSON:
   "bisa_disederhanakan": true,
   "alasan_jika_tidak_bisa": ""
 }`,
-    userMessage: `Sumber dokumen: ${sumber ?? "TKMKB"}
+      userMessage: `Sumber dokumen: ${sumber ?? "TKMKB"}
 
 Narasi:
 """
 ${narasi}
 """`,
-  });
+    });
 
-  await supabase.from("audit_log").insert({
-    user_id: user.id,
-    action: "import_narasi_logic_rule",
-    detail: { sumber, kode_diagnosis: hasil.kode_diagnosis },
-  });
+    await supabase.from("audit_log").insert({
+      user_id: user.id,
+      action: "import_narasi_logic_rule",
+      detail: { sumber, kode_diagnosis: hasil.kode_diagnosis },
+    });
 
-  return NextResponse.json({ draft: hasil });
+    return NextResponse.json({ draft: hasil });
+  } catch (error: any) {
+    console.error("Gagal import narasi:", error);
+    return NextResponse.json(
+      { error: `Gagal membuat draft: ${error?.message ?? "coba lagi"}` },
+      { status: 500 }
+    );
+  }
 }
