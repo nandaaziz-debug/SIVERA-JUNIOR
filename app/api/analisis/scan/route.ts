@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const MAKS_UKURAN = 15 * 1024 * 1024;
+  const MAKS_UKURAN = 4 * 1024 * 1024; // 4MB — batas aman di bawah limit platform Vercel (~4.5MB per request)
   if (file.size > MAKS_UKURAN) {
     return NextResponse.json(
-      { error: "Ukuran berkas maksimal 15MB." },
+      { error: "Ukuran berkas maksimal 4MB. Kompres PDF atau potong jadi beberapa halaman dulu." },
       { status: 400 }
     );
   }
