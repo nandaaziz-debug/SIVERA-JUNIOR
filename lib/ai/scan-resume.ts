@@ -1,5 +1,5 @@
 /**
- * Memanggil Claude (vision/PDF) untuk membaca berkas klaim BPJS dan
+ * Memanggil Gemini (multimodal) untuk membaca berkas klaim BPJS dan
  * mengekstrak field terstruktur (No. SEP, kode diagnosis, kode prosedur)
  * plus ringkasan klinis naratif. NIK/nomor peserta TIDAK diminta disertakan
  * di field apa pun oleh model — tapi ini hanya lapisan pertama. Lapisan
@@ -20,7 +20,7 @@ ATURAN WAJIB:
 - ringkasanKlinis: ringkasan naratif singkat kondisi klinis (keluhan, hasil penunjang,
   tindakan) — TANPA nama pasien/NIK/nomor peserta
 
-Keluarkan HANYA JSON valid dengan struktur persis ini, tanpa teks lain:
+Keluarkan HANYA JSON valid dengan struktur persis ini:
 {
   "sepNumber": "..." atau null,
   "kodeDiagnosisUtama": "..." atau null,
@@ -46,68 +46,48 @@ export async function scanResumeMedis({
   fileBase64,
   mediaType,
 }: ScanResumeParams): Promise<HasilEkstraksi> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY belum diatur di environment variable");
+    throw new Error("GEMINI_API_KEY belum diatur di environment variable");
   }
 
-  const isPdf = mediaType === "application/pdf";
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-  const fileBlock = isPdf
-    ? {
-        type: "document",
-        source: { type: "base64", media_type: mediaType, data: fileBase64 },
-      }
-    : {
-        type: "image",
-        source: { type: "base64", media_type: mediaType, data: fileBase64 },
-      };
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
-  };
-  // Header beta wajib untuk model membaca ISI PDF (bukan hanya render halaman
-  // pertama sebagai gambar) — tanpa ini, request PDF bisa ditolak API.
-  if (isPdf) {
-    headers["anthropic-beta"] = "pdfs-2024-09-25";
-  }
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: 1500,
-      system: `${SYSTEM_PROMPT}\n\nPENTING: keluarkan HANYA JSON, tanpa markdown code fence, tanpa teks pembuka/penutup.`,
-      messages: [
-        {
-          role: "user",
-          content: [
-            fileBlock,
-            {
-              type: "text",
-              text: "Ekstrak informasi dari berkas ini sesuai struktur JSON yang diminta.",
-            },
-          ],
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inline_data: { mime_type: mediaType, data: fileBase64 } },
+              { text: "Ekstrak informasi dari berkas ini sesuai struktur JSON yang diminta." },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 1500,
+          responseMimeType: "application/json",
         },
-      ],
-    }),
-  });
+      }),
+    }
+  );
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Anthropic API error (${response.status}): ${errText}`);
+    throw new Error(`Gemini API error (${response.status}): ${errText}`);
   }
 
   const data = await response.json();
-  const textBlock = data.content?.find((block: any) => block.type === "text");
-  const rawText: string = textBlock?.text ?? "{}";
-  const clean = rawText.replace(/```json|```/g, "").trim();
+  const rawText: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
 
   try {
-    const parsed = JSON.parse(clean);
+    const parsed = JSON.parse(rawText);
     return {
       sepNumber: parsed.sepNumber ?? null,
       kodeDiagnosisUtama: parsed.kodeDiagnosisUtama ?? null,
