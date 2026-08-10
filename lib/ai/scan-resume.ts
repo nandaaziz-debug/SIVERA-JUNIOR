@@ -17,8 +17,23 @@ ATURAN WAJIB:
   fatal untuk verifikasi
 - Jika suatu field tidak ditemukan di berkas, isi dengan null atau array kosong,
   JANGAN mengarang
-- ringkasanKlinis: ringkasan naratif singkat kondisi klinis (keluhan, hasil penunjang,
-  tindakan) — TANPA nama pasien/NIK/nomor peserta
+- Baca SEMUA HALAMAN berkas, termasuk lampiran/berkas penunjang (hasil lab, rontgen,
+  USG, dll) kalau ada dalam satu PDF yang sama — jangan hanya baca halaman pertama
+
+ringkasanKlinis WAJIB LENGKAP DAN MENYELURUH (BUKAN diringkas/dipangkas), mencakup
+SEMUA bagian berikut persis seperti tertulis di berkas, dengan angka/nilai lab apa
+adanya (jangan dibulatkan atau dihilangkan):
+1. Anamnesis / Keluhan Utama
+2. Riwayat Perjalanan Penyakit (lengkap, termasuk rujukan dari mana kalau ada)
+3. Pemeriksaan Fisik (tanda vital, temuan pemeriksaan)
+4. Pemeriksaan Penunjang — SEMUA hasil lab/rontgen/USG/EKG dengan angka dan nilai
+   rujukan persis seperti di berkas, jangan diringkas jadi "hasil lab normal" saja
+5. Diagnosis Utama
+6. Diagnosis Sekunder (kalau ada)
+7. Tatalaksana / Terapi yang diberikan
+
+Tulis sebagai teks terstruktur dengan penanda bagian yang jelas (boleh pakai
+penomoran/label seperti contoh di atas), bukan satu paragraf naratif pendek.
 
 Keluarkan HANYA JSON valid dengan struktur persis ini:
 {
@@ -71,7 +86,7 @@ export async function scanResumeMedis({
         ],
         generationConfig: {
           temperature: 0,
-          maxOutputTokens: 1500,
+          maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
       }),
