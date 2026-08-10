@@ -58,7 +58,7 @@ export default function ImporNarasiPage() {
 
   return (
     <main className="mx-auto max-w-5xl p-8">
-      <div className="rounded-xl bg-white p-6 text-gray-900">
+      <div className="rounded-xl bg-white/90 backdrop-blur-md p-6 text-gray-900">
       <h1 className="text-2xl font-semibold text-primary">
         Import Aturan dari Narasi
       </h1>
