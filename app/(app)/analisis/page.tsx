@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import AnalisisItemCard, { QueueItem } from "@/components/analisis-item-card";
 
 const FORMAT_DIDUKUNG = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-const MAKS_UKURAN = 15 * 1024 * 1024;
+const MAKS_UKURAN = 4 * 1024 * 1024; // 4MB — samakan dengan batas di server
 
 function buatId() {
   return Math.random().toString(36).slice(2);
@@ -27,10 +27,17 @@ export default function AnalisisKasusPage() {
   const tambahBerkas = useCallback((files: FileList | File[]) => {
     const daftar = Array.from(files);
     const itemBaru: QueueItem[] = [];
+    const ditolak: string[] = [];
 
     for (const file of daftar) {
-      if (!FORMAT_DIDUKUNG.includes(file.type)) continue;
-      if (file.size > MAKS_UKURAN) continue;
+      if (!FORMAT_DIDUKUNG.includes(file.type)) {
+        ditolak.push(`${file.name} (format tidak didukung)`);
+        continue;
+      }
+      if (file.size > MAKS_UKURAN) {
+        ditolak.push(`${file.name} (lebih dari 4MB)`);
+        continue;
+      }
 
       itemBaru.push({
         localId: buatId(),
@@ -43,6 +50,10 @@ export default function AnalisisKasusPage() {
         kodeDiagnosis: "",
         kodeTambahan: "",
       });
+    }
+
+    if (ditolak.length > 0) {
+      alert(`Berkas berikut tidak bisa ditambahkan:\n${ditolak.join("\n")}`);
     }
 
     if (itemBaru.length > 0) {
@@ -88,7 +99,21 @@ export default function AnalisisKasusPage() {
         formData.append("berkas", item.file);
 
         const res = await fetch("/api/analisis/scan", { method: "POST", body: formData });
-        const data = await res.json();
+
+        let data: any;
+        try {
+          data = await res.json();
+        } catch {
+          // Respons bukan JSON — biasanya platform (Vercel) menolak request
+          // sebelum sampai ke kode kita, misal karena ukuran terlalu besar.
+          updateItem(item.localId, {
+            status: "error",
+            errorMsg: res.status === 413
+              ? "Berkas ditolak server karena terlalu besar (maksimal 4MB)."
+              : `Server merespons tidak wajar (status ${res.status}).`,
+          });
+          continue;
+        }
 
         if (!res.ok) {
           updateItem(item.localId, { status: "error", errorMsg: data.error ?? "Gagal memindai" });
@@ -159,7 +184,7 @@ export default function AnalisisKasusPage() {
           Klik untuk lampirkan, seret berkas ke sini, atau paste (Ctrl+V) screenshot
         </p>
         <p className="mt-1 text-xs text-gray-500">
-          Format: JPG, PNG, WEBP, atau PDF — maksimal 15MB per berkas, bisa banyak sekaligus
+          Format: JPG, PNG, WEBP, atau PDF — maksimal 4MB per berkas, bisa banyak sekaligus
         </p>
         <input
           ref={inputRef}
