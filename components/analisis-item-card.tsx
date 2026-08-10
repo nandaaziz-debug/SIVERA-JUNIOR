@@ -191,7 +191,7 @@ export default function AnalisisItemCard({
               </div>
               <textarea
                 className="mt-1 w-full rounded glass-input p-2 font-mono text-xs text-gray-200"
-                rows={5}
+                rows={16}
                 value={item.teksEditable}
                 onChange={(e) => onUpdate({ teksEditable: e.target.value })}
                 disabled={item.status === "tersimpan"}
